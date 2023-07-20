@@ -19,6 +19,16 @@ import { pipe } from "ramda";
 
 const api = new Api();
 
+function pipeline(...funcs) {
+  return async function (val) {
+    for (let func of funcs) {
+      // console.log(func);
+      val = await func(val);
+    }
+    return val;
+  };
+}
+
 const getWriteLog = ({ value, writeLog, handleSuccess, handleError }) => {
   writeLog(value);
   return { value, writeLog, handleSuccess, handleError };
@@ -35,37 +45,41 @@ const validateValue = ({ value, writeLog, handleSuccess, handleError }) => {
   return handleError("ValidationError");
 };
 
-const fromDecimalToBinary = ({
+const fromDecimalToBinary = async ({
   value,
   writeLog,
   handleSuccess,
   handleError,
 }) => {
-  console.log("number 10", value);
-  api
-    .get("https://api.tech/numbers/base", {
+  // console.log("number 10", value);
+  try {
+    const response = await api.get("https://api.tech/numbers/base", {
       from: 10,
       to: 2,
       number: value,
-    })
-    .then((res) => res)
-    .catch((err) => console.log(err));
-  console.log("number 2", value);
-  return { value: value, writeLog, handleError, handleSuccess };
-  // Add .catch() to handle errors if needed
+    });
+    // console.log("number 2", response);
+    return { value: response.result, writeLog, handleError, handleSuccess };
+  } catch (err) {
+    // console.log(err);
+    return handleError("API Error");
+  }
 };
 
-const getAnimal = ({ value, writeLog, handleSuccess, handleError }) => {
-  api
-    .get(`https://animals.tech/${value}`, {})
-    .then((res) => res)
-    .catch((err) => console.log(err));
-  handleSuccess(value);
-  return { value, writeLog, handleSuccess, handleError };
+const getAnimal = async ({ value, writeLog, handleSuccess, handleError }) => {
+  try {
+    const response = await api.get(`https://animals.tech/${value}`, {});
+    // console.log("getAnimal", response);
+    handleSuccess(response.result);
+    return { value: response.result, writeLog, handleSuccess, handleError };
+  } catch (err) {
+    // console.log(err);
+    return handleError("API Error");
+  }
 };
 
 const toInt = ({ value, writeLog, handleSuccess, handleError }) => {
-  console.log("toint value", value);
+  // console.log("toint value", value);
   return {
     value: parseInt(value),
     writeLog: writeLog,
@@ -97,15 +111,20 @@ const pow2 = ({ value, writeLog, handleSuccess, handleError }) => ({
   handleError,
 });
 
-const processSequence = pipe(
-  pipe(getWriteLog),
-  pipe(validateValue),
-  pipe(toInt, getWriteLog),
-  pipe(intToBinary, getWriteLog),
-  pipe(getLength, getWriteLog),
-  pipe(pow2, getWriteLog),
-  pipe(mod3, getWriteLog),
-  pipe(getAnimal, getWriteLog)
+const processSequence = pipeline(
+  getWriteLog,
+  validateValue,
+  toInt,
+  getWriteLog,
+  fromDecimalToBinary,
+  getWriteLog,
+  getLength,
+  getWriteLog,
+  pow2,
+  getWriteLog,
+  mod3,
+  getWriteLog,
+  getAnimal
 );
 /*
 const processSequence = ({ value, writeLog, handleSuccess, handleError }) => {
