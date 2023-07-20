@@ -14,38 +14,103 @@
  * Иногда промисы от API будут приходить в состояние rejected, (прямо как и API в реальной жизни)
  * Ответ будет приходить в поле {result}
  */
- import Api from '../tools/api';
+import Api from "../tools/api";
+import { pipe } from "ramda";
 
- const api = new Api();
+const api = new Api();
 
- /**
-  * Я – пример, удали меня
-  */
- const wait = time => new Promise(resolve => {
-     setTimeout(resolve, time);
- })
+const getWriteLog = ({ value, writeLog, handleSuccess, handleError }) => {
+  writeLog(value);
+  return { value, writeLog, handleSuccess, handleError };
+};
 
- const processSequence = ({value, writeLog, handleSuccess, handleError}) => {
-     /**
-      * Я – пример, удали меня
-      */
-     writeLog(value);
+const validateValue = ({ value, writeLog, handleSuccess, handleError }) => {
+  if (
+    value.toString().length < 10 &&
+    value.toString().length > 2 &&
+    parseInt(value) > 0
+  ) {
+    return { value, writeLog, handleSuccess, handleError };
+  }
+  return handleError("ValidationError");
+};
 
-     api.get('https://api.tech/numbers/base', {from: 2, to: 10, number: '01011010101'}).then(({result}) => {
-         writeLog(result);
-     });
+const fromDecimalToBinary = ({
+  value,
+  writeLog,
+  handleSuccess,
+  handleError,
+}) => {
+  console.log("number 10", value);
+  api
+    .get("https://api.tech/numbers/base", {
+      from: 10,
+      to: 2,
+      number: value,
+    })
+    .then((res) => res)
+    .catch((err) => console.log(err));
+  console.log("number 2", value);
+  return { value: value, writeLog, handleError, handleSuccess };
+  // Add .catch() to handle errors if needed
+};
 
-     wait(2500).then(() => {
-         writeLog('SecondLog')
+const getAnimal = ({ value, writeLog, handleSuccess, handleError }) => {
+  api
+    .get(`https://animals.tech/${value}`, {})
+    .then((res) => res)
+    .catch((err) => console.log(err));
+  handleSuccess(value);
+  return { value, writeLog, handleSuccess, handleError };
+};
 
-         return wait(1500);
-     }).then(() => {
-         writeLog('ThirdLog');
+const toInt = ({ value, writeLog, handleSuccess, handleError }) => {
+  console.log("toint value", value);
+  return {
+    value: parseInt(value),
+    writeLog: writeLog,
+    handleSuccess,
+    handleError,
+  };
+};
 
-         return wait(400);
-     }).then(() => {
-         handleSuccess('Done');
-     });
- }
+const intToBinary = pipe(toInt, fromDecimalToBinary);
+
+const getLength = ({ value, writeLog, handleSuccess, handleError }) => ({
+  value: value.toString().length,
+  writeLog,
+  handleSuccess,
+  handleError,
+});
+
+const mod3 = ({ value, writeLog, handleSuccess, handleError }) => ({
+  value: value % 3,
+  writeLog,
+  handleSuccess,
+  handleError,
+});
+
+const pow2 = ({ value, writeLog, handleSuccess, handleError }) => ({
+  value: Math.pow(value, 2),
+  writeLog,
+  handleSuccess,
+  handleError,
+});
+
+const processSequence = pipe(
+  pipe(getWriteLog),
+  pipe(validateValue),
+  pipe(toInt, getWriteLog),
+  pipe(intToBinary, getWriteLog),
+  pipe(getLength, getWriteLog),
+  pipe(pow2, getWriteLog),
+  pipe(mod3, getWriteLog),
+  pipe(getAnimal, getWriteLog)
+);
+/*
+const processSequence = ({ value, writeLog, handleSuccess, handleError }) => {
+  
+};
+*/
 
 export default processSequence;
